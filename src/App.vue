@@ -23,14 +23,15 @@
             v-if="ticker != ''"
           >
             <span
-              v-for="(item, i) in hintsList.splice(0, 4)"
-              :key="i"
+              v-for="item in hintsList.splice(0, 4)"
+              :key="item.id"
+              @click="(ticker = item.Symbol), add()"
               class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
             >
               {{ item.Symbol }}
             </span>
           </div>
-          <div class="text-sm text-red-600" v-if="false">
+          <div class="text-sm text-red-600" v-if="isTickerAlreadyAdded">
             Такой тикер уже добавлен
           </div>
         </div>
@@ -149,7 +150,8 @@ export default {
     choose: null,
     graphData: [],
     coinList: [],
-    hintsList: []
+    hintsList: [],
+    isTickerAlreadyAdded: false
   }),
   mounted: function() {
     fetch("https://min-api.cryptocompare.com/data/all/coinlist?summary=true")
@@ -165,21 +167,29 @@ export default {
   },
   methods: {
     add() {
-      const currentTicker = { name: this.ticker, price: "1-" };
-      this.tickers.push(currentTicker);
-      setInterval(async () => {
-        const fet = await fetch(
-          `https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&api_key=bc8b813e264bf21a7c7661ada16b4f4e1cb8d6a70b07b1492a233a26ea3a8d43`
-        );
-        const data = await fet.json();
-        this.tickers.find(item => item.name === currentTicker.name).price =
-          data.USD;
-        if (this.choose?.name === currentTicker.name) {
-          this.graphData.push(data.USD);
-        }
-      }, 3000);
+      this.tickers.find(item =>
+        item.name === this.ticker
+          ? (this.isTickerAlreadyAdded = true)
+          : (this.isTickerAlreadyAdded = false)
+      );
+      const currentTicker = { name: this.ticker, price: "updating..." };
 
-      this.ticker = "";
+      if (!this.isTickerAlreadyAdded) {
+        this.tickers.push(currentTicker);
+        setInterval(async () => {
+          const fet = await fetch(
+            `https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&api_key=bc8b813e264bf21a7c7661ada16b4f4e1cb8d6a70b07b1492a233a26ea3a8d43`
+          );
+          const data = await fet.json();
+          this.tickers.find(item => item.name === currentTicker.name).price =
+            data.USD;
+          if (this.choose?.name === currentTicker.name) {
+            this.graphData.push(data.USD);
+          }
+        }, 3000);
+
+        this.ticker = "";
+      }
     },
 
     hints() {
