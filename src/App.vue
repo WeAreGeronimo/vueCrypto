@@ -1,5 +1,5 @@
 <template>
-  <div class="container">
+  <div class="container mx-auto mt-6">
     <section>
       <div class="flex">
         <div class="max-w-xs">
@@ -10,6 +10,7 @@
             <input
               @keydown.enter="add"
               v-model="ticker"
+              :onchange="hints()"
               type="text"
               name="wallet"
               id="wallet"
@@ -19,29 +20,19 @@
           </div>
           <div
             class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
+            v-if="ticker != ''"
           >
             <span
+              v-for="(item, i) in hintsList.splice(0, 4)"
+              :key="i"
               class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
             >
-              BTC
-            </span>
-            <span
-              class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-            >
-              DOGE
-            </span>
-            <span
-              class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-            >
-              BCH
-            </span>
-            <span
-              class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-            >
-              CHD
+              {{ item.Symbol }}
             </span>
           </div>
-          <div class="text-sm text-red-600" v-if="false">Такой тикер уже добавлен</div>
+          <div class="text-sm text-red-600" v-if="false">
+            Такой тикер уже добавлен
+          </div>
         </div>
       </div>
       <button
@@ -74,7 +65,7 @@
         :key="item.name"
         @click="select(item)"
         :class="{
-          'border-4': choose === item,
+          'border-4': choose === item
         }"
       >
         <div class="px-4 py-5 sm:p-6 text-center">
@@ -157,7 +148,21 @@ export default {
     tickers: [],
     choose: null,
     graphData: [],
+    coinList: [],
+    hintsList: []
   }),
+  mounted: function() {
+    fetch("https://min-api.cryptocompare.com/data/all/coinlist?summary=true")
+      .then(response => {
+        return response.json();
+      })
+      .then(data => {
+        // eslint-disable-next-line no-prototype-builtins
+        for (let element in data.Data) {
+          this.coinList.push(data.Data[element]);
+        }
+      });
+  },
   methods: {
     add() {
       const currentTicker = { name: this.ticker, price: "1-" };
@@ -167,8 +172,8 @@ export default {
           `https://min-api.cryptocompare.com/data/price?fsym=${currentTicker.name}&tsyms=USD&api_key=bc8b813e264bf21a7c7661ada16b4f4e1cb8d6a70b07b1492a233a26ea3a8d43`
         );
         const data = await fet.json();
-        console.log(data);
-        this.tickers.find((item) => item.name === currentTicker.name).price = data.USD;
+        this.tickers.find(item => item.name === currentTicker.name).price =
+          data.USD;
         if (this.choose?.name === currentTicker.name) {
           this.graphData.push(data.USD);
         }
@@ -176,18 +181,39 @@ export default {
 
       this.ticker = "";
     },
+
+    hints() {
+      if (this.ticker) {
+        this.hintsList = [...this.filterItems(this.ticker, 4)];
+      }
+      if (!this.ticker) {
+        this.hintsList = [];
+      }
+    },
+
     normalGraphSize() {
       const maxValue = Math.max(...this.graphData);
       const minValue = Math.min(...this.graphData);
       return this.graphData.map(
-        (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue)
+        price => 5 + ((price - minValue) * 95) / (maxValue - minValue)
       );
     },
+
     select(ticker) {
       this.choose = ticker;
       this.graphData = [];
     },
-  },
+
+    filterItems(query) {
+      return this.coinList
+        .filter(function(el) {
+          return el.Symbol.toLowerCase().indexOf(query.toLowerCase()) > -1;
+        })
+        .sort(function(elementA, elementB) {
+          return elementA.Symbol.length - elementB.Symbol.length;
+        });
+    }
+  }
 };
 </script>
 
